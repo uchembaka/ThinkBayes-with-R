@@ -1,4 +1,4 @@
-source("C:/Users/uchem/Dropbox/Projects/R/Think Bayes/Ch02/chapter02_examples.R")
+source("....../Ch02/chapter02_examples.R")#link code to chapter 02
 
 #3.1 Dice Problem
 
@@ -210,7 +210,7 @@ MakeCdfFromItems = function(items, name=""){
   cdf <- Cdf$new(xs, ps, name)
   return (cdf)
 }
-#NOTE: To make the MakeCdf() method available to SUite class, run the suite class from chapter 02,
+#NOTE: To make the MakeCdf() method available to Suite class, re-run the Suite class from chapter 02,
 #then run the second version of Train class again. This is so that Suite class inherits the new Pmf 
 #method MakeCdf() and Train inherits the new method from Suite class
 
