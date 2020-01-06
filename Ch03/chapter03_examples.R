@@ -186,7 +186,6 @@ Pmf$methods(MakeCdf =
 })
 
 MakeCdfFromPmf = function(pmf, name = NA){
-  if(is.na(name)) name <- deparse(substitute(pmf))
   return (MakeCdfFromItems(pmf$Items()))
 }
 
