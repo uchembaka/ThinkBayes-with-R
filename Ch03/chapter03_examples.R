@@ -168,9 +168,19 @@ Cdf <- setRefClass("Cdf",
                        }
                        if(p == 0) return(.self$xs[1])
                        if(p == 1) return(.self$xs[length(.self$xs)])
-                       index <- findInterval(p, ps)#replacing bisect 
-                       if(p == .self$ps[index]) return (.self$xs[index])
-                       else return (.self$xs[index+1])
+                       index <- findInterval(p, .self$ps)
+                       if(index == 0){
+                         tmp <- .self$ps
+                         tmp <- append(tmp, p)
+                         tmp <- sort(tmp)
+                         index <- findInterval(p, tmp)
+                       }#replacing bisect 
+                       
+                       if((index-1) == 0) return(.self$xs[1])
+                       else{
+                         if(p == .self$ps[index-1]) return (.self$xs[index-1])
+                         else return (.self$xs[index])
+                       }
 
                      },
                      Percentile = function(p){
