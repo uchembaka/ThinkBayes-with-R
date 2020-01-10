@@ -19,7 +19,7 @@ Odds <- function(p){
   inivisible(p/(p-1))
 }#Odds()
 
-Probability = function(o){
+Probability <- function(o){
   #'Computes the probability corresponding to given odds.
   #'
   #'@param o: float odds, strictly positive
@@ -31,7 +31,7 @@ Probability = function(o){
   invisible(o(o+1))
 }#Probability
 
-Probability2 = function(yes, no){
+Probability2 <- function(yes, no){
   #' Computes the probability corresponding to given odds.
   #' 
   #' @param yes, no: int or float odds in favor
@@ -40,6 +40,7 @@ Probability2 = function(yes, no){
   
   invisible(yes/(yes+no))
 }#Probability2
+
 
 #' Interpolator class
 #' 
@@ -358,11 +359,44 @@ DictWrapper <- setRefClass("DictWrapper",
                            )#methods()
 )#DictWrapper Class
 
+
+#' Histogram class
+#' 
+#' Represents a histogram, which is a map from values to frequencies.
+#' frequencies are integer counters.
+Hist <- setRefClass("Hist",
+                    contains = "DictWrapper",
+                    methods = list(
+                      Freq = function(x){
+                        "Gets the frequency associated with the value x.
+                        
+                        Args:
+                            x: number value
+                            
+                        Returns:
+                            frequency
+                        "
+                        
+                        if (x %in% names(.self$ls)){
+                          invisible(.self$ls[[as.character(x)]])
+                        }else{
+                          invisible(0)
+                        }
+                      },#Freq()
+                      
+                      Freqs = function(xs){
+                        "Gets frequencies for a sequence of values."
+                        invisible(sapply(xs, function(x) .self$Freq(x)))
+                      }
+                    )
+)#Hist class
+
+
 #' Represents a probability mass function.
 #' 
-#' Values can be any hashable type; probabilities are floating-point.
+#' probabilities are floating-point.
 #' Pmfs are not necessarily normalized.
-Pmf <- setRefClass("PmF",
+Pmf <- setRefClass("Pmf",
                    contains = "DictWrapper",
                    methods = list(
                      Prob = function(x, default=0){
@@ -390,12 +424,7 @@ Pmf <- setRefClass("PmF",
                      
                      Probs = function(xs){
                        " Gets probabilities for a sequence of values"
-                       
-                       probs = c()
-                       for(x in xs){
-                         probs <- append(probs, .self$Prob(x))
-                       }
-                       invisible (probs)
+                       invisible(sapply(xs, function(x) .self$Prob(x)))
                      },#Probs()
                      
                      ProbGreater = function(x){
@@ -419,7 +448,9 @@ Pmf <- setRefClass("PmF",
                        
                        Returns: the total probability before normalizing
                        "
+                       
                        if(.self$log == TRUE) stop("Pmf is under a log transform")
+                       
                        
                        total = .self$Total()
                        if(total == 0.0){
@@ -697,16 +728,13 @@ MakeCdfFromItems = function(items, name=""){
 Suite <- setRefClass("Suite",
                      contains = "Pmf",
                      methods = list(
-                       initialize = function(){
-                         stop("This class is acting as an abstract class. Use any of the subclasses")
-                       },
                        Update = function(data){
                          "Updates each hypothesis based on the data.
                          data: any representation of the data
                          returns: the normalizing constant
                          "
                          
-                         for(hypo in names(x)){
+                         for(hypo in names(.self$ls)){
                            like <- .self$Likelihood(data, hypo)
                            .self$Mult(hypo, like)
                          }
@@ -782,7 +810,7 @@ Suite <- setRefClass("Suite",
                          data: some representation of the data
                          "
                          stop("Unimplemented Method")
-                       }#LogLikelihood(),
+                       },#LogLikelihood(),
                        Print = function(){
                          items.name <- c(names(.self$Items()))
                          i <- 1
@@ -817,4 +845,6 @@ Suite <- setRefClass("Suite",
                        }#MakeProbs()
                      )
 )#Suite class
+
+
 
