@@ -2,6 +2,92 @@
 #  Pmf: represents a probability mass function (map from values to probs).
 #  DictWrapper: private parent class for Hist and Pmf.
 
+Odds <- function(p){
+  #' Compute odds for a given probability
+  #' 
+  #' Example: p = 0.75 means 75 for and 25 agains, or 3:1 odds in favor.
+  #' 
+  #' Note: when p = 1, Odds(1) = inifinity
+  #' 
+  #' @param p: float 0-1
+  #' 
+  #' @return float odds
+  #' 
+  
+  if(p == 1) inivisible(Inf)
+  
+  inivisible(p/(p-1))
+}#Odds()
+
+Probability = function(o){
+  #'Computes the probability corresponding to given odds.
+  #'
+  #'@param o: float odds, strictly positive
+  #'
+  #'@return float probability
+  #'
+  #' @example o = 2 means 2:1 odds in favour, or 2/3 probability
+  
+  invisible(o(o+1))
+}#Probability
+
+Probability2 = function(yes, no){
+  #' Computes the probability corresponding to given odds.
+  #' 
+  #' @param yes, no: int or float odds in favor
+  #' 
+  #' @example yes=2, no=1 means 2:1 odds in favor, or 2/3 probability.
+  
+  invisible(yes/(yes+no))
+}#Probability2
+
+#' Interpolator class
+#' 
+#' Represents a mapping between sorted sequences; performs linear interp.
+#' 
+#' @param xs: sorted list
+#' @param yx: sorted list
+#' 
+Interpolator <- setRefClass("Interpolator",
+                            fields = list(xs = "vector", ys = "vector"),
+                            methods = list(
+                              initialize = function(xs, ys){
+                                .self$xs <<- xs
+                                .self$ys <<- ys
+                              },#init
+                              
+                              Lookup = function(x){
+                                "Looks up x and returns the corresponding value of y."
+                                invisible(.self$Bisect(x, .self$xs, .self$ys))
+                              },#Lookup()
+                              
+                              Reverse = function(y){
+                                "Looks up y and returns the corresponding value of x."
+                                
+                                invisible(y, .self$ys, .self$xs)
+                              },#Reverse()
+                              
+                              Bisect = function(x, xs, ys){
+                                "Helper function."
+                                
+                                if(x <= xs[1]) return (.self$ys[1])
+                                if(x >= xs[length(.self$xs)]) return (.self$ys[length(.self$ys)])
+                                
+                                i = findInterval(x, .self$xs)
+                                
+                                if(i == 0){
+                                  tmp <- .self$xs
+                                  tmp <- append(tmp, x)
+                                  tmp <- sort(tmp)
+                                  i <- findInterval(x, tmp)
+                                }
+                                
+                                y = ys[i-1] + ((ys[i] - ys[i-1])/(xs[i] - xs[i-1]))*(x - xs[i-1])
+                                
+                                return(y)
+                              }#Bisect
+                            )
+)#Interpolator class
 
 #' DictWrapper Class
 DictWrapper <- setRefClass("DictWrapper",
@@ -82,7 +168,7 @@ DictWrapper <- setRefClass("DictWrapper",
                              },
                              
                              contains = function(value){
-                               return (ls[as.character(value)])
+                               return (.self$ls[as.character(value)])
                              },
                              
                              Copy = function(name = NA){
@@ -607,4 +693,128 @@ MakeCdfFromItems = function(items, name=""){
 }
 
 
+#'Represents a suite of hypotheses and their probabilities.
+Suite <- setRefClass("Suite",
+                     contains = "Pmf",
+                     methods = list(
+                       initialize = function(){
+                         stop("This class is acting as an abstract class. Use any of the subclasses")
+                       },
+                       Update = function(data){
+                         "Updates each hypothesis based on the data.
+                         data: any representation of the data
+                         returns: the normalizing constant
+                         "
+                         
+                         for(hypo in names(x)){
+                           like <- .self$Likelihood(data, hypo)
+                           .self$Mult(hypo, like)
+                         }
+                         invisible(.self$Normalize())
+                       },#Update()
+                       
+                       LogUpdate = function(data){
+                         "Updates a suite of hypotheses based on new data.
+                         
+                         Modifies the suite directly; if you want to keep the original, make a copy.
+                         
+                         Note: unlike Update, LogUpdate does not normalize.
+                         
+                         Args:
+                            data: any representation of the data
+                         "
+                         
+                         for(hypo in names(x)){
+                           like <- .self$LogLikelihood(data, hypo)
+                           .self$Incr(hypo, like)
+                         }
+                       },#LogUpdate()
+                       
+                       UpdateSet = function(dataset){
+                         "Updates each hypothesis based on the dataset.
+                         
+                         This is more efficient than calling Update repeatedly because
+                         it waits until the end to Normalize.
+                         
+                         Modifies the suite directly; if you want to keep the original, make a copy.
+                         
+                         dataset: a sequence of data
+                         
+                         returns: the normalizing constant
+                         "
+                         
+                         for (data in dataset){
+                           for(hypo in names(x)){
+                             like <- .self$Likelihood(data, hypo)
+                             .self$Mult(hypo, like)
+                           }
+                         }
+                         invisible(.self$Normalize())
+                       },#UpdateSet()
+                       
+                       LogUpdateSet = function(dataset){
+                         "Updates each hypothesis based on the dataset.
+                         
+                         Modifies the suite directly; if you want to keep the original, make a copy.
+                         
+                         dataset: a sequence of data
+                         
+                         returns: None
+                         "
+                         for(data in dataset){
+                           .self$LogUpdate(data)
+                         }
+                       },#LogUpdateSet()
+                       
+                       Likelihood = function(data, hypo){
+                         "Computes the likelihood of the data under the hypothesis.
+                         
+                         hypo: some representation of the hypothesis
+                         data: some representation of the data
+                         "
+                         stop("Unimplemented Method")
+                       },#Likelihood()
+                       
+                       LogLikelihood = function(data, hypo){
+                         "Computes the log likelihood of the data under the hypothesis.
+                         
+                         hypo: some representation of the hypothesis
+                         data: some representation of the data
+                         "
+                         stop("Unimplemented Method")
+                       }#LogLikelihood(),
+                       Print = function(){
+                         items.name <- c(names(.self$Items()))
+                         i <- 1
+                         for(item in .self$Items()){
+                           cat(items.name[i],": ", item,"\n")
+                           i = i+1
+                         }
+                       },#Print()
+                       MakeOdds = function(){
+                         "Transforms from probabilities to odds.
+                         
+                         Values with prob=0 are removed.
+                         "
+                         for(i in 1:length(.self$Items())){
+                           hypo <- .self$Items()[i]
+                           prob <- .self$Items()[[i]]
+                           if (prob == 0){
+                             .self$Remove(hypo)
+                           }else{
+                             .self$Set(hypo, Odds(prob))
+                           }
+                         }
+                       },#MakeOdds()
+                       
+                       MakeProbs = function(){
+                         "Transforms from odds to probabilities."
+                         for(i in 1:length(.self$Items())){
+                           hypo <- .self$Items()[i]
+                           odds <- .self$Items()[[i]]
+                           .self$Set(hypo, Probability(odds))
+                         }
+                       }#MakeProbs()
+                     )
+)#Suite class
 
