@@ -1,4 +1,4 @@
-#  Class and functions as defined in thinkbayes.py
+#  Classes and functions as defined in thinkbayes.py
 #  Pmf: represents a probability mass function (map from values to probs).
 #  DictWrapper: private parent class for Hist and Pmf.
 
@@ -46,8 +46,8 @@ Probability2 <- function(yes, no){
 #' 
 #' Represents a mapping between sorted sequences; performs linear interp.
 #' 
-#' @param xs: sorted list
-#' @param yx: sorted list
+#' @field xs: sorted list
+#' @field yx: sorted list
 #' 
 Interpolator <- setRefClass("Interpolator",
                             fields = list(xs = "vector", ys = "vector"),
@@ -74,14 +74,7 @@ Interpolator <- setRefClass("Interpolator",
                                 if(x <= xs[1]) return (.self$ys[1])
                                 if(x >= xs[length(.self$xs)]) return (.self$ys[length(.self$ys)])
                                 
-                                i = findInterval(x, .self$xs)
-                                
-                                if(i == 0){
-                                  tmp <- .self$xs
-                                  tmp <- append(tmp, x)
-                                  tmp <- sort(tmp)
-                                  i <- findInterval(x, tmp)
-                                }
+                                i = findInterval(x, .self$xs)+1
                                 
                                 y = ys[i-1] + ((ys[i] - ys[i-1])/(xs[i] - xs[i-1]))*(x - xs[i-1])
                                 
@@ -94,7 +87,7 @@ Interpolator <- setRefClass("Interpolator",
 DictWrapper <- setRefClass("DictWrapper",
                            fields = list(ls = "list", name = "character", log = "logical"),
                            methods = list(
-                             initialize = function(values = NA, name = ''){
+                             initialize = function(values = NULL, name = ''){
                                "Initializes the distribution.
                                
                                hypos: sequence of hypotheses"
@@ -105,7 +98,7 @@ DictWrapper <- setRefClass("DictWrapper",
                                #flag whether the distribution is under a log transform
                                .self$log <<- FALSE
                                
-                               if(all(is.na(values))) return ()
+                               if(all(is.null(values))) return ()
                                
                                init_methods <- c(.self$InitPmf,
                                                  .self$InitMapping,
@@ -152,10 +145,8 @@ DictWrapper <- setRefClass("DictWrapper",
                                "Initializes with a Pmf.
                                 
                                values: Pmf object"
-                               
-                               items <- values$Item()
-                               for(value in 1:length(items)){
-                                 .self$Set(names(items[value]), value)
+                               for(name in names(values$Items())){
+                                 .self$Set(name, values$Items()[[name]])
                                }
                              },#InitPmf()
                              
@@ -194,10 +185,9 @@ DictWrapper <- setRefClass("DictWrapper",
                                new <- .self$Copy()
                                new$ls <- list()
                                
-                               items <- .self$Items()
-                               for(value in 1:length(items)){
-                                 newValues <- as.numeric(names(items[value]))*factor
-                                 new$Set(as.character(newValues), items[[value]])
+                               for(name in names(.self$Items())){
+                                 newValues <- as.numeric(name)*factor
+                                 new$Set(as.character(newValues), .self$Items()[[name]])
                                }
                                invisible (new)
                              },#Scale()
@@ -216,10 +206,9 @@ DictWrapper <- setRefClass("DictWrapper",
                                
                                if(is.na(m)) m <- .self$MaxLike()
                                
-                               items <- .self$Items()
-                               for(i in 1:length(items)){
-                                 if(items[[i]] == 0) .self$Remove(names(item[i]))
-                                 else .self$Set(names(items[i]), log(items[[i]]/m))
+                               for(name in names(.self$Items())){
+                                 if(.self$Items()[[name]] == 0) .self$Remove(name)
+                                 else .self$Set(name, log(.self$Items()[[name]]/m))
                                }
                              },#log()
                              
@@ -263,10 +252,7 @@ DictWrapper <- setRefClass("DictWrapper",
                              },#Values()
                              
                              Items = function(){
-                               items <- c()
-                               items <- unlist(.self$ls, use.names = F)
-                               names(items) <- names(.self$ls)
-                               invisible (items)
+                               invisible (unlist(.self$ls))
                              }, #ITems()
                              
                              Render = function(){
@@ -387,7 +373,29 @@ Hist <- setRefClass("Hist",
                       Freqs = function(xs){
                         "Gets frequencies for a sequence of values."
                         invisible(sapply(xs, function(x) .self$Freq(x)))
-                      }
+                      },#Freqs()
+                      
+                      IsSubset = function(other){
+                        "Checks whether the values in this histogram are a subset of
+                        the values in the given histogram."
+                        
+                        for(name in names(.self$Items())){
+                          val <- name
+                          freq <- .self$Items()[[name]]
+                          if (freq > other$Freq(val)) return(FALSE)
+                        }
+                        
+                        return(TRUE)
+                      },#IsSubset
+                      
+                      Subtract = function(other){
+                        "Subtracts the values in the given histogram from this histogram."
+                        for(name in names(.self$Items())){
+                          val <- name
+                          freq <- .self$Items()[[name]]
+                          .self$Incr(val, -freq)
+                        }
+                      }#Subtract
                     )
 )#Hist class
 
@@ -477,7 +485,7 @@ Pmf <- setRefClass("Pmf",
                        total <- 0.0
                        for(x in 1:length(.self$ls)){
                          total <- total+.self$ls[[x]]
-                         if(total >= target) invisible (as.numeric(names(.self$ls[x])))
+                         if(total >= target) return(as.numeric(names(.self$ls[x])))
                        }
                      },#Random()
                      
@@ -621,11 +629,111 @@ Pmf <- setRefClass("Pmf",
 )#Pmf Class
 
 
+#' Represents a joint distribution.
+#' 
+
+Joint <- setRefClass("Joint",
+                     contains = "Pmf",
+                     methods = list(
+                       
+                       unpack = function(v){
+                         "helper function"
+                         return (sapply(unlist(strsplit(v,","), use.names = F), function(x) as.numeric(x)))
+                       },#unpack
+                       
+                       pack = function(v){
+                         "helper function"
+                         return(paste(v, collapse = ","))
+                       },#pack
+                       
+                       Marginal = function(i , name=''){
+                         "Gets the marginal distribution of the indicated variable.
+                         
+                         i: index of the variable we want
+                         
+                         Returns: Pmf
+                         "
+                         pmf <- Pmf(name = name)
+                         for(val in names(.self$Items())){
+                           pmf$Incr(.self$unpack(val)[i], .self$Items()[[val]])
+                         }
+                         
+                         invisible(pmf)
+                       },#Marginal()
+                       
+                       Conditional = function(i, j, val, name=''){
+                         "Gets the conditional distribution of the indicated variable.
+                         
+                         Distribution of vs[i], conditioned on vs[j] = val.
+                         
+                         i: index of the variable we want
+                         j: which variable is conditioned on
+                         val: the value the jth variable has to have
+                         
+                         Returns: Pmf
+                         "
+                         pmf <- Pmf$new(name = name)
+                         for(vs in names(.self$Items())){
+                           if(.self$unpack(vs)[j] != val) next
+                           pmf$Incr(.self$unpack(vs)[i], .self$Items()[[vs]])
+                         }
+                         pmf$Normalize()
+                         
+                         invisible(pmf)
+                       },#Conditional()
+                       
+                       MaxLikeInterval = function(percentage = 90){
+                         "Returns the maximum-likelihood credible interval.
+                         
+                         If percentage=90, computes a 90% CI containing the values
+                         with the highest likelihoods.
+                         
+                         percentage: float between 0 and 100
+                         
+                         Returns: list of values from the suite
+                         "
+                         
+                         interval <- c()
+                         total <- 0
+                         
+                         t <- sort(.self$Items(), decreasing = T)
+                         
+                         for(val in names(t)){
+                           interval <- append(interval, val)
+                           total <- total+t[[val]]
+                           if(total >= percentage/100) break
+                         }
+                         invisible(interval)
+                         
+                       }#MaxLikeInterval()
+                     )
+)#Joint pmf class
+
+
+#' Make Joint Distribution
+#' 
+#' Joint distribution of values from pmf1 and pmf2
+#' 
+#' @param pmf1: Pmf Object
+#' @param pmf2: Pmf Object
+#' 
+#' @return Joint pmf of values pairs
+#' 
+MakeJoint = function(pmf1, pmf2){
+  joint <- Joint()
+  for(v1 in names(pmf1$Items())){
+    for(v2 in names(pmf2$Items())){
+      joint$Set(joint$pack(c(v1,v2)), pmf1$Items()[[v1]]*pmf2$Items()[[v2]])
+    }
+  }
+  invisible(joint)
+}#MakeJoint
+
 #' Represents a cumulative distribution function.
 #' 
 #'  @field xs: sequence of values
-#'  ps: sequence of probabilities
-#'  name: string used as a graph label.
+#'  @field ps: sequence of probabilities
+#'  @field name: string used as a graph label.
 
 Cdf <- setRefClass("Cdf",
                    fields = list(xs = "vector", ps = "vector", name = "character"),
@@ -639,6 +747,85 @@ Cdf <- setRefClass("Cdf",
                        }else{.self$ps <<- ps}
                        .self$name <<- name
                      },
+                     
+                     Copy = function(name = NA){
+                       "Returns a copy of this Cdf.
+                       
+                       Args:
+                          name: string name for the new Cdf
+                       "
+                       new <- .self$copy()
+                       if(is.na(name)){
+                         invisible (new)
+                       }
+                       new$name <- name
+                       invisible(new)
+                     },#Copy()
+                     
+                     MakePmf = function(name=NA){
+                       "Makes a Pmf"
+                       
+                       invisible(MakePmfFromCdf(name = name))
+                     },#MakePmf
+                     
+                     Values = function(){
+                       invisible(.self$xs)
+                     },#Values
+                     
+                     Items = function(){
+                       "Returns a sorted sequence of (value, probability) pairs."
+                       temp <- .self$ps
+                       names(temp) <- .self$xs
+                       invisible(temp)
+                     },#Items()
+                     
+                     Append = function(x, p){
+                       "Add an (x, p) pair to the end of this CDF.
+                       
+                       Note: this us normally used to build a CDF from scratch, not
+                       to modify existing CDFs.  It is up to the caller to make sure
+                       that the result is a legal CDF.
+                       "
+                       .self$xs <<- append(.self$xs, x)
+                       .self$ps <<- append(.self$ps, p)
+                     },#Append()
+                     
+                     Shift = function(term){
+                       "Adds a term to the xs.
+                       
+                       term: how much to add
+                       "
+                       new <- .self$Copy()
+                       new$xs <- sapply(.self$xs, function(x) x+term)
+                       invisible(new)
+                     },#Shift()
+                     
+                     Scale = function(factor){
+                       "Multiplies the xs by a factor
+                       
+                       factor: what to multiply by
+                       "
+                       new <- .self$Copy()
+                       new$xs <- sapply(.self$xs, function(x) x*factor)
+                       invisible(new)
+                     },#Scale()
+                     
+                     Prob = function(x){
+                       "Returns CDF(x), the probability that corresponds to value x
+                       
+                       Args:
+                          x: number
+                          
+                      Returns:
+                          float probability
+                       "
+                       
+                       if(x < .self$xs[1]) return(0.0)
+                       
+                       index <- findInterval(x, .self$xs)+1
+                       return(.self$ps[index]-1)
+                     },
+                     
                      Value = function(p){
                        "Returns InverseCDF(p), the value that corresponds to probability p.
                        
@@ -653,20 +840,14 @@ Cdf <- setRefClass("Cdf",
                        }
                        if(p == 0) return(.self$xs[1])
                        if(p == 1) return(.self$xs[length(.self$xs)])
-                       index <- findInterval(p, .self$ps)
-                       if(index == 0){
-                         tmp <- .self$ps
-                         tmp <- append(tmp, p)
-                         tmp <- sort(tmp)
-                         index <- findInterval(p, tmp)
-                       }#replacing bisect 
-                       
+                       index <- findInterval(p, .self$ps)+1
                        if((index-1) == 0) return(.self$xs[1])
                        else{
                          if(p == .self$ps[index-1]) return (.self$xs[index-1])
                          else return (.self$xs[index])
                        }
-                     },
+                     },#Value()
+                     
                      Percentile = function(p){
                        "Returns the value that corresponds to percentile p.
                        
@@ -677,6 +858,32 @@ Cdf <- setRefClass("Cdf",
                           number value
                        "
                        return (.self$Value(p/100))
+                     },#Percentile()
+                     
+                     Random = function(){
+                       "Chooses a random value from this distribution."
+                       return(.self$Value(runif(1)))
+                     },#Random()
+                     
+                     Sample = function(n){
+                       "Generates a random sample from this distribution.
+                       
+                       Args:
+                          n: int length of the sample
+                       "
+                       sample <- vector("numeric", length = n)
+                       return(sample, function(x) .self$Random())
+                     },#Sample()
+                     
+                     Mean = function(){
+                       "Computes the mean of a CDF
+                       
+                       Returns:
+                          mean
+                       "
+                       old_p = 0
+                       total = 0
+                       
                      }
                    )
 )#CDF class
@@ -811,6 +1018,7 @@ Suite <- setRefClass("Suite",
                          "
                          stop("Unimplemented Method")
                        },#LogLikelihood(),
+                       
                        Print = function(){
                          items.name <- c(names(.self$Items()))
                          i <- 1
@@ -819,6 +1027,7 @@ Suite <- setRefClass("Suite",
                            i = i+1
                          }
                        },#Print()
+                       
                        MakeOdds = function(){
                          "Transforms from probabilities to odds.
                          
