@@ -59,13 +59,13 @@ Interpolator <- setRefClass("Interpolator",
                               
                               Lookup = function(x){
                                 "Looks up x and returns the corresponding value of y."
-                                invisible(.self$Bisect(x, .self$xs, .self$ys))
+                                return(.self$Bisect(x, .self$xs, .self$ys))
                               },#Lookup()
                               
                               Reverse = function(y){
                                 "Looks up y and returns the corresponding value of x."
                                 
-                                invisible(y, .self$ys, .self$xs)
+                                return(y, .self$ys, .self$xs)
                               },#Reverse()
                               
                               Bisect = function(x, xs, ys){
@@ -78,7 +78,7 @@ Interpolator <- setRefClass("Interpolator",
                                 
                                 y = ys[i-1] + ((ys[i] - ys[i-1])/(xs[i] - xs[i-1]))*(x - xs[i-1])
                                 
-                                return(y)
+                                invisible(y)
                               }#Bisect
                             )
 )#Interpolator class
@@ -259,10 +259,9 @@ DictWrapper <- setRefClass("DictWrapper",
                                "Generates a sequence of points suitable for plotting.
                                
                                Returns:
-                                  vector of (sorted value sequence, freq/prob sequence)"
-                                  
-                              pl <- .self$ls[order(unlist(.self$ls, use.names = F))]
-                              invisible(cbind(as.numeric(names(pl)), unlist(pl, use.names = F)))
+                                  vector of (sorted value sequence, freq/prob sequence)
+                               "
+                              invisible(cbind(as.numeric(names(.self$ls)), unlist(.self$ls, use.names = F)))
                              },#Render()
                              
                              Print = function(){
@@ -364,15 +363,15 @@ Hist <- setRefClass("Hist",
                         "
                         
                         if (x %in% names(.self$ls)){
-                          invisible(.self$ls[[as.character(x)]])
+                          return(.self$ls[[as.character(x)]])
                         }else{
-                          invisible(0)
+                          return(0)
                         }
                       },#Freq()
                       
                       Freqs = function(xs){
                         "Gets frequencies for a sequence of values."
-                        invisible(sapply(xs, function(x) .self$Freq(x)))
+                        return(sapply(xs, function(x) .self$Freq(x)))
                       },#Freqs()
                       
                       IsSubset = function(other){
@@ -418,9 +417,9 @@ Pmf <- setRefClass("Pmf",
                           float probability"
                        
                        if (x %in% names(.self$ls)){
-                         invisible(.self$ls[[as.character(x)]])
+                         return(.self$ls[[as.character(x)]])
                        }else{
-                         invisible(default)
+                         return(default)
                        }
                      },#Prob()
                      
@@ -432,19 +431,19 @@ Pmf <- setRefClass("Pmf",
                      
                      Probs = function(xs){
                        " Gets probabilities for a sequence of values"
-                       invisible(sapply(xs, function(x) .self$Prob(x)))
+                       return(sapply(xs, function(x) .self$Prob(x)))
                      },#Probs()
                      
                      ProbGreater = function(x){
                        temp <- .self$ls[which(as.numeric(names(.self$ls)) > as.numeric(x))]
                        temp <- as.vector(unlist(temp, use.names = F))
-                       invisible (sum(temp))
+                       return (sum(temp))
                      },#ProbGreater
                      
                      ProbLesser = function(x){
                        temp <- .self$ls[which(as.numeric(names(.self$ls)) < as.numeric(x))]
                        temp <- as.vector(unlist(temp, use.names = F))
-                       invisible (sum(temp))
+                       return (sum(temp))
                      },#ProbLesser
                      
                      Normalize = function(fraction = 1.0){
@@ -500,7 +499,7 @@ Pmf <- setRefClass("Pmf",
                        for(i in 1:length(.self$ls)){
                          mu <- mu + .self$ls[[i]]* x[i]
                        }
-                       invisible (mu)
+                       return (mu)
                      },#Mean()
                      
                      Var = function(mu = NA){
@@ -520,7 +519,7 @@ Pmf <- setRefClass("Pmf",
                        for(i in 1:length(.self$ls)){
                          var <- var + .self$ls[[i]]*(x[i]-mu)^2 
                        }
-                       invisible (var)
+                       return (var)
                      },#Var()
                      
                      MaximumLikelihood = function(){
@@ -528,7 +527,7 @@ Pmf <- setRefClass("Pmf",
                        
                        Returns: float probability"
                        
-                       invisible(max(as.numeric(names(.self$ls[which(.self$Items() == max(.self$Items()))]))))
+                       return(max(as.numeric(names(.self$ls[which(.self$Items() == max(.self$Items()))]))))
                      },#MaximumLikelihood
                      
                      CredibleInterval = function(percentage = 90){
@@ -638,12 +637,12 @@ Joint <- setRefClass("Joint",
                        
                        unpack = function(v){
                          "helper function"
-                         return (sapply(unlist(strsplit(v,","), use.names = F), function(x) as.numeric(x)))
+                         invisible (sapply(unlist(strsplit(v,","), use.names = F), function(x) as.numeric(x)))
                        },#unpack
                        
                        pack = function(v){
                          "helper function"
-                         return(paste(v, collapse = ","))
+                         invisible(paste(v, collapse = ","))
                        },#pack
                        
                        Marginal = function(i , name=''){
@@ -703,7 +702,7 @@ Joint <- setRefClass("Joint",
                            total <- total+t[[val]]
                            if(total >= percentage/100) break
                          }
-                         invisible(interval)
+                         return(interval)
                          
                        }#MaxLikeInterval()
                      )
@@ -914,7 +913,7 @@ MakeCdfFromItems = function(items, name=""){
   xs <- vector()
   cs <- vector()
   
-  items <- sort(items)
+  #items <- sort(items)
   
   for (i in 1:length(items)){
     runsum <- runsum + items[[i]]
@@ -1055,5 +1054,100 @@ Suite <- setRefClass("Suite",
                      )
 )#Suite class
 
+#' Percentile
+#' 
+#' Computes a percentile of a given pmf
+#' 
+#' @param pmf: a pmf object
+#' @param percentage: value 0 - 100
+#' 
+
+Percentile <- function(pmf, percentage){
+  p <- percentage/100
+  total <- 0
+  for(val in names(pmf$Items())){
+    total <- total + pmf$Items()[[val]]
+    if(total >= p) return(val)
+  }
+}#Percentile
+
+#' CredibleInterval
+#' 
+#' Computes a credible interval for a given distribution.
+#' If percentage=90, computes the 90% CI.
+#' 
+#' @param pmf: Pmf object representing a posterior distribution
+#' @param percentage: float between 0 and 100
+#' 
+#' @return sequence of two floats, low and high
+#' 
+CredibleInterval <- function(pmf, percentage = 90){
+  cdf <- pmf$MakeCdf()
+  prob <- (1-percentage/100)/2
+  interval <- c(cdf$Value(prob), cdf$Value(1-prob))
+  return(interval)
+}#CredibleInterval
 
 
+#' Beta Distribution
+#' 
+#' Represents a Beta distribution
+#' See http://en.wikipedia.org/wiki/Beta_distribution
+#' 
+Beta <- setRefClass("Beta",
+                    fields = list(alpha = "numeric", beta = "numeric", name = "character"),
+                    methods = list(
+                      initialize = function(alpha =1, beta = 1, name = ""){
+                        .self$alpha <<- alpha
+                        .self$beta <<- beta
+                        .self$name <<- name
+                      },#initialize
+                      
+                      Update = function(data){
+                        "Updates a Beta distribution
+                        
+                        data: numeric vector (heads, tails)
+                        "
+                        heads <- data[1]
+                        tails <- data[2]
+                        .self$alpha <<- .self$alpha + heads
+                        .self$beta <<- .self$beta + tails
+                      },#Update()
+                      
+                      Mean = function(){
+                        "Computes the mean of this distribution."
+                        return(.self$alpha/(.self$alpha+.self$beta))
+                      },#Mean()
+                      
+                      Random = function(){
+                        "Generates a random variate from this distribution."
+                        return(rbeta(1,.self$alpha, .self$beta))
+                      },#Random()
+                      
+                      EvalPdf = function(x){
+                        "Evaluates the PDF at x."
+                        x^(.self$alpha-1)*(1-x)^(.self$beta-1)
+                      },#EvalPdf()
+                      
+                      MakePmf = function(steps = 100, name=""){
+                        "Returns a Pmf of this distribution.
+                        
+                        Note: Normally, we just evaluate the PDF at a sequence
+                        of points and treat the probability density as a probability mass
+                        
+                        But if alpha or beta is less than one, we have to be
+                        more careful because the PDF goes to infinity at x=0
+                        and x=1.  In that case we evaluate the CDF and compute
+                        differences.
+                        "
+                        if(.self$alpha < 1 | .self$beta < 1){
+                          cdf <- .self$MakeCdf()
+                          pmf <- cdf$MakePmf()
+                          invisible(pmf)
+                        }
+                        
+                        xs <- sapply(steps, function(x) x/(steps))
+                        probs <- sapply(xs, function(x) .self$EvalPdf(x))
+                      }
+                    )
+)#Beta class
