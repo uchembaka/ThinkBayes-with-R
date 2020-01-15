@@ -728,6 +728,69 @@ MakeJoint = function(pmf1, pmf2){
   invisible(joint)
 }#MakeJoint
 
+#' MakeHistFromList
+#' 
+#' Makes a histogram from an unsorted sequence of values
+#' 
+#' @param t: sequence of numbers
+#' @param name: name of histogram
+#' 
+#' @return Hist object
+#' 
+MakeHistFromList <- function(t, name=""){
+  hist <- Hist(name = name)
+  for(x in t){
+    hist$Incr(x)
+  }
+  
+  invisible(hist)
+}#MakeHistFromList()
+
+#' MakeHistFromList
+#' 
+#' Makes a histogram from a map from values to frequencies.
+#' 
+#' @param d: list that maps value to frequencies
+#' @param name: name of this histogram
+#' 
+#' @return Hist object
+#' 
+MakeHistFromDict = function(d, name=""){
+  invisible(Hist(d, name))
+}#MakeHistFromDict
+
+#' MakePmfFromList
+#' 
+#' Makes a PMF from an unsorted sequence of values.
+#' 
+#' @param t: sequence of number
+#' @param name: name of this PMF
+#' 
+#' @return pmf object
+#' 
+MakePmfFromList = function(t, name=""){
+  hist <- MakeHistFromList(t)
+  d <- hist$GetList()
+  pmf <- Pmf(d, name)
+  pmf$Normalize()
+  invisible(pmf)
+}#MakePmfFromList()
+
+#' MakePmfFromDict
+#' 
+#' Makes a PMF from a map from values to probabilities
+#' 
+#' @param d: list thta maps value to probabilities
+#' @param name: name of this pmf
+#' 
+#' @return pmf object
+#' 
+MakePmfFromDict =function(d, name=""){
+  pmf <- Pmf(d, name)
+  pmf$Normalize()
+  invisible(pmf)
+}#MakePmfFromDict()
+
 #' Represents a cumulative distribution function.
 #' 
 #'  @field xs: sequence of values
@@ -1110,8 +1173,8 @@ Beta <- setRefClass("Beta",
                         "
                         heads <- data[1]
                         tails <- data[2]
-                        .self$alpha <<- .self$alpha + heads
-                        .self$beta <<- .self$beta + tails
+                        .self$alpha <- .self$alpha + heads
+                        .self$beta <- .self$beta + tails
                       },#Update()
                       
                       Mean = function(){
@@ -1146,8 +1209,20 @@ Beta <- setRefClass("Beta",
                           invisible(pmf)
                         }
                         
-                        xs <- sapply(steps, function(x) x/(steps))
+                        xs <- sapply(0:steps, function(x) x/steps)
                         probs <- sapply(xs, function(x) .self$EvalPdf(x))
-                      }
+                        d <- probs
+                        names(d) <- xs
+                        pmf <- MakePmfFromDict(d, name)
+                        invisible(pmf)
+                      },#MakePmf()
+                      
+                      MakeCdf = function(steps = 100){
+                        "Returns the CDF of this distribution."
+                        xs <- sapply(0:steps, function(x) x/steps)
+                        ps <- sapply(xs, function(x) pbeta(x, .self$alpha, .self$beta))
+                        cdf <- Cdf(xs, ps)
+                        invisible(cdf)
+                      }#Make
                     )
 )#Beta class
