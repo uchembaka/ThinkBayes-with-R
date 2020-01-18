@@ -135,8 +135,8 @@ DictWrapper <- setRefClass("DictWrapper",
                                values: map from value to probability"
 
                                if(is.null(names(values))) return(stop(""))
-                               for(value in 1:length(values)){
-                                 .self$Set(names(values[value]), value)
+                               for(value in names(values)){
+                                 .self$Set(value, values[[value]])
                                }
                                
                              },#InitMapping()
@@ -259,9 +259,10 @@ DictWrapper <- setRefClass("DictWrapper",
                                "Generates a sequence of points suitable for plotting.
                                
                                Returns:
-                                  vector of (sorted value sequence, freq/prob sequence)
+                                  dataframe of (sorted value sequence, freq/prob sequence)
                                "
-                              invisible(cbind(as.numeric(names(.self$ls)), unlist(.self$ls, use.names = F)))
+                               tmp <- as.data.frame(cbind(as.numeric(names(.self$Items())),.self$Items()))
+                              invisible(tmp[order(tmp$V1),])
                              },#Render()
                              
                              Print = function(){
@@ -293,9 +294,9 @@ DictWrapper <- setRefClass("DictWrapper",
                                   term: how much to increment by"
                                 
                                if (x %in% names(.self$ls)){
-                                 .self$ls[as.character(x)] <- .self$ls[[as.character(x)]]+1
+                                 .self$ls[as.character(x)] <- .self$ls[[as.character(x)]]+term
                                }else{
-                                 .self$ls[as.character(x)] <- 1
+                                 .self$ls[as.character(x)] <- term
                                }
                              },#Incr()
                              
@@ -481,10 +482,11 @@ Pmf <- setRefClass("Pmf",
                        if(.self$len() == 0) stop("Pmf contains no value")
                        
                        target <- runif(1)
+                       
                        total <- 0.0
-                       for(x in 1:length(.self$ls)){
-                         total <- total+.self$ls[[x]]
-                         if(total >= target) return(as.numeric(names(.self$ls[x])))
+                       for(x in names(.self$Items())){
+                         total <- total+.self$Items()[[x]]
+                         if(total >= target) return(as.numeric(x))
                        }
                      },#Random()
                      
@@ -552,7 +554,7 @@ Pmf <- setRefClass("Pmf",
                        
                        returns: new Pmf"
                        tryCatch(return(.self$AddPmf(other)), 
-                                finally = return(.self$AddConstant(other)))
+                                error = function(e) return(.self$AddConstant(other)))
                      },#add()
                      
                      AddPmf = function(other){
@@ -569,7 +571,7 @@ Pmf <- setRefClass("Pmf",
                          for(j in 1:length(other$Items())){
                            v2 <- as.numeric(names(other$Items()[j]))
                            p2 <- other$Items()[[j]]
-                           print(v1+v2)
+                           #print(v1+v2)
                            pmf$Incr(v1+v2, p1*p2)
                          }
                        }
@@ -1151,6 +1153,31 @@ CredibleInterval <- function(pmf, percentage = 90){
   return(interval)
 }#CredibleInterval
 
+#' Random Sum
+#' 
+#' Chooses a random value from each dist and returns the sum.
+#' 
+#' @param dists sequenc of Pmf or Cdf objects
+#' 
+#' @return numerical sum
+#' 
+RandomSum <- function(dists){
+  total <- sum(sapply(dists, function(dist) dist$Random()))
+  return(total)
+}#randomSUm()
+
+#' Sample Sum
+#' 
+#' Draws a sample of sums from a list of distributions
+#' 
+#' @param dist sequence of Pmf or Cdf objects
+#' @param n sample size
+#' 
+#' @return new Pmf of sums
+SampleSum <- function(dists, n){
+  pmf <- MakePmfFromList(sapply(1:n, function(i) RandomSum(dists)))
+  return (pmf)
+}#samplesum()
 
 #' Beta Distribution
 #' 
