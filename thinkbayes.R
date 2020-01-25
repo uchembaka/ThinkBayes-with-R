@@ -1,6 +1,14 @@
-#  Classes and functions as defined in thinkbayes.py
-#  Pmf: represents a probability mass function (map from values to probs).
-#  DictWrapper: private parent class for Hist and Pmf.
+#' This file contains class definitions for:
+#' 
+#' Hist: represents a histogram (map from values to integer frequencies).
+#' 
+#' Pmf: represents a probability mass function (map from values to probs).
+#' 
+#' _DictWrapper: private parent class for Hist and Pmf.
+#' 
+#' Cdf: represents a discrete cumulative distribution function
+#' 
+#' Pdf: represents a continuous probability density function
 
 Odds <- function(p){
   #' Compute odds for a given probability
@@ -757,7 +765,7 @@ MakeHistFromList <- function(t, name=""){
 #' 
 #' @return Hist object
 #' 
-MakeHistFromDict = function(d, name=""){
+MakeHistFromDict <- function(d, name=""){
   invisible(Hist(d, name))
 }#MakeHistFromDict
 
@@ -770,7 +778,7 @@ MakeHistFromDict = function(d, name=""){
 #' 
 #' @return pmf object
 #' 
-MakePmfFromList = function(t, name=""){
+MakePmfFromList <- function(t, name=""){
   hist <- MakeHistFromList(t)
   d <- hist$GetList()
   pmf <- Pmf(d, name)
@@ -787,11 +795,37 @@ MakePmfFromList = function(t, name=""){
 #' 
 #' @return pmf object
 #' 
-MakePmfFromDict =function(d, name=""){
+MakePmfFromDict <- function(d, name=""){
   pmf <- Pmf(d, name)
   pmf$Normalize()
   invisible(pmf)
 }#MakePmfFromDict()
+
+#' Make Mixture
+#' 
+#' Make a mixture distribution
+#' 
+#' @param metapmf Pmf that maps from Pmfs to probs.
+#' @param name string name for the new Pmf.
+#' 
+#' @return Pmf object. 
+#' 
+MakeMixture <- function(metapmf , name = "mix"){
+  mix <- Pmf(name=name)
+  
+  for(pmf in names(metapmf$Items())){
+     tmp <- eval(parse(text = pmf))
+     p1 <- metapmf$Items()[[pmf]]
+     
+     for(x in names(tmp$Items())){
+       p2 <- tmp$Items()[[x]]
+       mix$Incr(x, p1*p2)
+     }
+  }
+  
+  invisible (mix)
+  
+}#MakeMixture()
 
 #' Represents a cumulative distribution function.
 #' 
